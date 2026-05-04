@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LinkedIn Quick Launch</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="logo">⚡</span>
+      <h1>LinkedIn Quick Launch</h1>
+    </header>
+
+    <input
+      type="text"
+      id="companyInput"
+      placeholder="Company name..."
+      autocomplete="off"
+      spellcheck="false"
+    />
+
+    <div class="buttons">
+      <button data-action="salesNavSearch">Sales Nav Search</button>
+      <button data-action="linkedinCompanyPage">LinkedIn Company Page</button>
+      <button data-action="recentHires">Recent Hires (90d)</button>
+      <button data-action="marketingContacts">Marketing Contacts</button>
+      <button data-action="allEmployees">All Employees</button>
+    </div>
+
+    <div class="recent-section" id="recentSection">
+      <div class="recent-label">Recent</div>
+      <div class="chips" id="chipsContainer"></div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

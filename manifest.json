@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "LinkedIn Quick Launch",
+  "version": "1.0.0",
+  "description": "Auto-detects company from Salesforce and provides one-click LinkedIn Sales Navigator deep links.",
+  "permissions": ["activeTab", "storage", "tabs"],
+  "host_permissions": [
+    "*://*.lightning.force.com/*",
+    "*://*.salesforce.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.lightning.force.com/*",
+        "*://*.salesforce.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}
