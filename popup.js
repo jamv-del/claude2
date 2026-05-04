@@ -11,20 +11,20 @@ const API_KEY_STORAGE = 'apolloApiKey';
 const MAX_RECENT = 10;
 
 // Elements — main view
-const input         = document.getElementById('companyInput');
-const directBtn     = document.getElementById('directSalesNav');
-const directLabel   = document.getElementById('directLabel');
+const input          = document.getElementById('companyInput');
+const directBtn      = document.getElementById('directSalesNav');
+const directLabel    = document.getElementById('directLabel');
 const chipsContainer = document.getElementById('chipsContainer');
-const recentSection = document.getElementById('recentSection');
-const settingsBtn   = document.getElementById('settingsBtn');
+const recentSection  = document.getElementById('recentSection');
+const settingsBtn    = document.getElementById('settingsBtn');
 
 // Elements — settings view
-const mainView    = document.getElementById('mainView');
+const mainView     = document.getElementById('mainView');
 const settingsView = document.getElementById('settingsView');
-const backBtn     = document.getElementById('backBtn');
-const apiKeyInput = document.getElementById('apiKeyInput');
-const saveBtn     = document.getElementById('saveBtn');
-const saveMsg     = document.getElementById('saveMsg');
+const backBtn      = document.getElementById('backBtn');
+const apiKeyInput  = document.getElementById('apiKeyInput');
+const saveBtn      = document.getElementById('saveBtn');
+const saveMsg      = document.getElementById('saveMsg');
 
 // ── URL helpers ──────────────────────────────────────────────────────────────
 
@@ -39,22 +39,19 @@ function extractLinkedInSlug(linkedinUrl) {
 }
 
 function buildDirectSalesNavUrl(org) {
-  // Prefer numeric UID for an exact match
   if (org.linkedin_uid) {
     return `https://www.linkedin.com/sales/company/${org.linkedin_uid}`;
   }
   const slug = extractLinkedInSlug(org.linkedin_url);
-  if (slug) {
-    return `https://www.linkedin.com/sales/company/${slug}`;
-  }
-  return null;
+  return slug ? `https://www.linkedin.com/sales/company/${slug}` : null;
 }
 
 // ── Apollo enrichment ────────────────────────────────────────────────────────
 
-async function enrichWithApollo({ domain, name }, apiKey) {
-  const payload = domain ? { domain } : { name };
-  console.log('[LQL] Apollo request payload:', payload);
+// Apollo's enrich endpoint requires a domain — name-only calls return 422.
+// We only call it when we have a domain from the page.
+async function enrichWithApollo(domain, apiKey) {
+  console.log('[LQL] Apollo enriching domain:', domain);
   try {
     const res = await fetch('https://api.apollo.io/v1/organizations/enrich', {
       method: 'POST',
@@ -62,16 +59,11 @@ async function enrichWithApollo({ domain, name }, apiKey) {
         'Content-Type': 'application/json',
         'X-Api-Key': apiKey,
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ domain }),
     });
-    console.log('[LQL] Apollo response status:', res.status);
-    if (!res.ok) {
-      const text = await res.text();
-      console.log('[LQL] Apollo error body:', text);
-      return null;
-    }
+    console.log('[LQL] Apollo status:', res.status);
+    if (!res.ok) return null;
     const data = await res.json();
-    console.log('[LQL] Apollo org:', data.organization);
     return data.organization || null;
   } catch (e) {
     console.log('[LQL] Apollo fetch error:', e);
@@ -106,29 +98,22 @@ function setDirectBtnHidden() {
   directBtn.hidden = true;
 }
 
-async function tryEnrich({ name, domain }) {
+async function tryEnrich(domain) {
+  if (!domain) {
+    setDirectBtnHidden();
+    return;
+  }
   chrome.storage.local.get([API_KEY_STORAGE], async (result) => {
     const apiKey = result[API_KEY_STORAGE];
-    console.log('[LQL] tryEnrich — name:', name, '| domain:', domain, '| hasKey:', !!apiKey);
-    if (!apiKey) {
-      setDirectBtnHidden();
-      return;
-    }
+    if (!apiKey) { setDirectBtnHidden(); return; }
 
     setDirectBtnLoading();
-    const org = await enrichWithApollo({ domain, name }, apiKey);
-
-    if (!org) {
-      setDirectBtnNotFound();
-      return;
-    }
+    const org = await enrichWithApollo(domain, apiKey);
+    if (!org) { setDirectBtnNotFound(); return; }
 
     const url = buildDirectSalesNavUrl(org);
-    if (url) {
-      setDirectBtnReady(url);
-    } else {
-      setDirectBtnNotFound();
-    }
+    if (url) setDirectBtnReady(url);
+    else setDirectBtnNotFound();
   });
 }
 
@@ -149,13 +134,6 @@ document.querySelectorAll('.buttons button').forEach((btn) => {
 
 input.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') openSearchUrl('salesNavSearch');
-});
-
-// Re-run enrichment if user manually overrides the company name (no domain available)
-input.addEventListener('change', () => {
-  const company = input.value.trim();
-  if (company) tryEnrich({ name: company, domain: null });
-  else setDirectBtnHidden();
 });
 
 // ── Recent companies ─────────────────────────────────────────────────────────
@@ -185,7 +163,8 @@ function renderChips(recents) {
     chip.addEventListener('click', () => {
       input.value = company;
       input.focus();
-      tryEnrich({ name: company, domain: null });
+      // No domain available for manual chip selections — hide direct button
+      setDirectBtnHidden();
     });
     chipsContainer.appendChild(chip);
   });
@@ -215,13 +194,12 @@ backBtn.addEventListener('click', () => {
 });
 
 saveBtn.addEventListener('click', () => {
-  const key = apiKeyInput.value.trim();
+  // Strip any non-ASCII characters that can sneak in via copy-paste
+  const key = apiKeyInput.value.replace(/[^\x20-\x7E]/g, '').trim();
+  apiKeyInput.value = key;
   chrome.storage.local.set({ [API_KEY_STORAGE]: key }, () => {
     saveMsg.hidden = false;
     setTimeout(() => { saveMsg.hidden = true; }, 1800);
-    // Re-run enrichment with new key if a company is already in the input
-    const company = input.value.trim();
-    if (company && key) tryEnrich({ name: company, domain: null });
   });
 });
 
@@ -233,27 +211,20 @@ function detectCompany() {
     if (!tab) return;
 
     chrome.tabs.sendMessage(tab.id, { action: 'getCompany' }, (response) => {
-      if (chrome.runtime.lastError) {
-        console.log('[LQL] content script error:', chrome.runtime.lastError.message);
-        return;
-      }
-      console.log('[LQL] content script response:', response);
+      if (chrome.runtime.lastError) return;
       if (!response) return;
+
       if (response.company) input.value = response.company;
 
       if (response.domain) {
-        // Domain ready immediately — enrich now
-        tryEnrich({ name: response.company, domain: response.domain });
+        tryEnrich(response.domain);
       } else if (response.company) {
         // SPA may not have rendered the Website field yet — retry once after 1.5s
         setDirectBtnLoading();
         setTimeout(() => {
-          chrome.tabs.sendMessage(tab.id, { action: 'getCompany' }, (retryResponse) => {
+          chrome.tabs.sendMessage(tab.id, { action: 'getCompany' }, (retry) => {
             if (chrome.runtime.lastError) return;
-            console.log('[LQL] retry response:', retryResponse);
-            const name   = retryResponse?.company || response.company;
-            const domain = retryResponse?.domain || null;
-            tryEnrich({ name, domain });
+            tryEnrich(retry?.domain || null);
           });
         }, 1500);
       }
