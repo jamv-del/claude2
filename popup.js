@@ -240,9 +240,23 @@ function detectCompany() {
       console.log('[LQL] content script response:', response);
       if (!response) return;
       if (response.company) input.value = response.company;
-      const name = response.company;
-      const domain = response.domain;
-      if (name || domain) tryEnrich({ name, domain });
+
+      if (response.domain) {
+        // Domain ready immediately — enrich now
+        tryEnrich({ name: response.company, domain: response.domain });
+      } else if (response.company) {
+        // SPA may not have rendered the Website field yet — retry once after 1.5s
+        setDirectBtnLoading();
+        setTimeout(() => {
+          chrome.tabs.sendMessage(tab.id, { action: 'getCompany' }, (retryResponse) => {
+            if (chrome.runtime.lastError) return;
+            console.log('[LQL] retry response:', retryResponse);
+            const name   = retryResponse?.company || response.company;
+            const domain = retryResponse?.domain || null;
+            tryEnrich({ name, domain });
+          });
+        }, 1500);
+      }
     });
   });
 }
