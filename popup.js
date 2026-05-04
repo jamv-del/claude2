@@ -53,8 +53,8 @@ function buildDirectSalesNavUrl(org) {
 // ── Apollo enrichment ────────────────────────────────────────────────────────
 
 async function enrichWithApollo({ domain, name }, apiKey) {
-  // Domain lookup is more reliable than name; fall back to name if no domain
   const payload = domain ? { domain } : { name };
+  console.log('[LQL] Apollo request payload:', payload);
   try {
     const res = await fetch('https://api.apollo.io/v1/organizations/enrich', {
       method: 'POST',
@@ -64,10 +64,17 @@ async function enrichWithApollo({ domain, name }, apiKey) {
       },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) return null;
+    console.log('[LQL] Apollo response status:', res.status);
+    if (!res.ok) {
+      const text = await res.text();
+      console.log('[LQL] Apollo error body:', text);
+      return null;
+    }
     const data = await res.json();
+    console.log('[LQL] Apollo org:', data.organization);
     return data.organization || null;
-  } catch {
+  } catch (e) {
+    console.log('[LQL] Apollo fetch error:', e);
     return null;
   }
 }
@@ -102,6 +109,7 @@ function setDirectBtnHidden() {
 async function tryEnrich({ name, domain }) {
   chrome.storage.local.get([API_KEY_STORAGE], async (result) => {
     const apiKey = result[API_KEY_STORAGE];
+    console.log('[LQL] tryEnrich — name:', name, '| domain:', domain, '| hasKey:', !!apiKey);
     if (!apiKey) {
       setDirectBtnHidden();
       return;
@@ -225,10 +233,13 @@ function detectCompany() {
     if (!tab) return;
 
     chrome.tabs.sendMessage(tab.id, { action: 'getCompany' }, (response) => {
-      if (chrome.runtime.lastError) return;
+      if (chrome.runtime.lastError) {
+        console.log('[LQL] content script error:', chrome.runtime.lastError.message);
+        return;
+      }
+      console.log('[LQL] content script response:', response);
       if (!response) return;
       if (response.company) input.value = response.company;
-      // Enrich using domain if found, otherwise fall back to company name
       const name = response.company;
       const domain = response.domain;
       if (name || domain) tryEnrich({ name, domain });
