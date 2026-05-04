@@ -17,6 +17,7 @@ const directLabel    = document.getElementById('directLabel');
 const chipsContainer = document.getElementById('chipsContainer');
 const recentSection  = document.getElementById('recentSection');
 const settingsBtn    = document.getElementById('settingsBtn');
+const keyIndicator   = document.getElementById('keyIndicator');
 
 // Elements — settings view
 const mainView     = document.getElementById('mainView');
@@ -200,6 +201,7 @@ saveBtn.addEventListener('click', () => {
   chrome.storage.local.set({ [API_KEY_STORAGE]: key }, () => {
     saveMsg.hidden = false;
     setTimeout(() => { saveMsg.hidden = true; }, 1800);
+    keyIndicator.hidden = !key;
   });
 });
 
@@ -249,6 +251,11 @@ function useDomainFromTab(tab) {
     // unparseable URL — do nothing
   }
 }
+
+// Show key indicator if API key is already stored
+chrome.storage.local.get([API_KEY_STORAGE], (result) => {
+  keyIndicator.hidden = !result[API_KEY_STORAGE];
+});
 
 detectCompany();
 loadRecents();

@@ -77,6 +77,15 @@ h1 {
   flex: 1;
 }
 
+.key-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #16a34a;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25);
+}
+
 .icon-btn {
   background: none;
   border: none;
