@@ -10,6 +10,8 @@ const STORAGE_KEY = 'recentCompanies';
 const API_KEY_STORAGE = 'apolloApiKey';
 const MAX_RECENT = 10;
 
+let cachedDomain = null; // domain detected on popup open, used to re-enrich after settings save
+
 // Elements — main view
 const input          = document.getElementById('companyInput');
 const directBtn      = document.getElementById('directSalesNav');
@@ -104,6 +106,7 @@ async function tryEnrich(domain) {
     setDirectBtnHidden();
     return;
   }
+  cachedDomain = domain;
   chrome.storage.local.get([API_KEY_STORAGE], async (result) => {
     const apiKey = result[API_KEY_STORAGE];
     if (!apiKey) { setDirectBtnHidden(); return; }
@@ -192,6 +195,8 @@ backBtn.addEventListener('click', () => {
   settingsView.hidden = true;
   mainView.hidden = false;
   input.focus();
+  // Re-run enrichment in case the API key was just saved for the first time
+  if (cachedDomain) tryEnrich(cachedDomain);
 });
 
 saveBtn.addEventListener('click', () => {
