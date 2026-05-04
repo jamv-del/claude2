@@ -8,31 +8,70 @@
 </head>
 <body>
   <div class="container">
-    <header>
-      <span class="logo">⚡</span>
-      <h1>LinkedIn Quick Launch</h1>
-    </header>
 
-    <input
-      type="text"
-      id="companyInput"
-      placeholder="Company name..."
-      autocomplete="off"
-      spellcheck="false"
-    />
+    <!-- Main view -->
+    <div id="mainView">
+      <header>
+        <span class="logo">⚡</span>
+        <h1>LinkedIn Quick Launch</h1>
+        <button class="icon-btn" id="settingsBtn" title="Settings">⚙</button>
+      </header>
 
-    <div class="buttons">
-      <button data-action="salesNavSearch">Sales Nav Search</button>
-      <button data-action="linkedinCompanyPage">LinkedIn Company Page</button>
-      <button data-action="recentHires">Recent Hires (90d)</button>
-      <button data-action="marketingContacts">Marketing Contacts</button>
-      <button data-action="allEmployees">All Employees</button>
+      <input
+        type="text"
+        id="companyInput"
+        placeholder="Company name..."
+        autocomplete="off"
+        spellcheck="false"
+      />
+
+      <!-- Direct Sales Nav button (Apollo-powered) -->
+      <button id="directSalesNav" class="direct-btn" disabled hidden>
+        <span id="directLabel">Searching Apollo…</span>
+      </button>
+
+      <div class="section-label" id="searchLabel">Search LinkedIn</div>
+
+      <div class="buttons">
+        <button data-action="salesNavSearch">Sales Nav Search</button>
+        <button data-action="linkedinCompanyPage">LinkedIn Company Page</button>
+        <button data-action="recentHires">Recent Hires (90d)</button>
+        <button data-action="marketingContacts">Marketing Contacts</button>
+        <button data-action="allEmployees">All Employees</button>
+      </div>
+
+      <div class="recent-section" id="recentSection">
+        <div class="recent-label">Recent</div>
+        <div class="chips" id="chipsContainer"></div>
+      </div>
     </div>
 
-    <div class="recent-section" id="recentSection">
-      <div class="recent-label">Recent</div>
-      <div class="chips" id="chipsContainer"></div>
+    <!-- Settings view -->
+    <div id="settingsView" hidden>
+      <header>
+        <button class="icon-btn" id="backBtn" title="Back">←</button>
+        <h1>Settings</h1>
+      </header>
+
+      <div class="settings-group">
+        <label for="apiKeyInput">Apollo API Key</label>
+        <input
+          type="password"
+          id="apiKeyInput"
+          placeholder="Paste your Apollo API key…"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <div class="settings-hint">
+          Found in Apollo → Settings → Integrations → API Keys.
+          Stored locally on your device only.
+        </div>
+      </div>
+
+      <button id="saveBtn" class="save-btn">Save</button>
+      <div id="saveMsg" class="save-msg" hidden>Saved ✓</div>
     </div>
+
   </div>
   <script src="popup.js"></script>
 </body>

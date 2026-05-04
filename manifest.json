@@ -6,7 +6,8 @@
   "permissions": ["activeTab", "storage", "tabs"],
   "host_permissions": [
     "*://*.lightning.force.com/*",
-    "*://*.salesforce.com/*"
+    "*://*.salesforce.com/*",
+    "https://api.apollo.io/*"
   ],
   "action": {
     "default_popup": "popup.html",
