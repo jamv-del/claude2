@@ -211,7 +211,11 @@ function detectCompany() {
     if (!tab) return;
 
     chrome.tabs.sendMessage(tab.id, { action: 'getCompany' }, (response) => {
-      if (chrome.runtime.lastError) return;
+      if (chrome.runtime.lastError) {
+        // Content script not on this page (non-Salesforce) — use the tab URL directly
+        useDomainFromTab(tab);
+        return;
+      }
       if (!response) return;
 
       if (response.company) input.value = response.company;
@@ -219,7 +223,7 @@ function detectCompany() {
       if (response.domain) {
         tryEnrich(response.domain);
       } else if (response.company) {
-        // SPA may not have rendered the Website field yet — retry once after 1.5s
+        // Salesforce SPA may not have rendered the Website field yet — retry once
         setDirectBtnLoading();
         setTimeout(() => {
           chrome.tabs.sendMessage(tab.id, { action: 'getCompany' }, (retry) => {
@@ -230,6 +234,20 @@ function detectCompany() {
       }
     });
   });
+}
+
+function useDomainFromTab(tab) {
+  if (!tab.url) return;
+  try {
+    const url = new URL(tab.url);
+    if (!url.hostname || url.protocol === 'chrome:' || url.protocol === 'chrome-extension:') return;
+    const domain = url.hostname.replace(/^www\./, '');
+    if (!domain || !domain.includes('.')) return;
+    input.value = domain;
+    tryEnrich(domain);
+  } catch {
+    // unparseable URL — do nothing
+  }
 }
 
 detectCompany();
