@@ -52,7 +52,9 @@ function buildDirectSalesNavUrl(org) {
 
 // ── Apollo enrichment ────────────────────────────────────────────────────────
 
-async function enrichWithApollo(companyName, apiKey) {
+async function enrichWithApollo({ domain, name }, apiKey) {
+  // Domain lookup is more reliable than name; fall back to name if no domain
+  const payload = domain ? { domain } : { name };
   try {
     const res = await fetch('https://api.apollo.io/v1/organizations/enrich', {
       method: 'POST',
@@ -60,7 +62,7 @@ async function enrichWithApollo(companyName, apiKey) {
         'Content-Type': 'application/json',
         'X-Api-Key': apiKey,
       },
-      body: JSON.stringify({ name: companyName }),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -97,7 +99,7 @@ function setDirectBtnHidden() {
   directBtn.hidden = true;
 }
 
-async function tryEnrich(companyName) {
+async function tryEnrich({ name, domain }) {
   chrome.storage.local.get([API_KEY_STORAGE], async (result) => {
     const apiKey = result[API_KEY_STORAGE];
     if (!apiKey) {
@@ -106,7 +108,7 @@ async function tryEnrich(companyName) {
     }
 
     setDirectBtnLoading();
-    const org = await enrichWithApollo(companyName, apiKey);
+    const org = await enrichWithApollo({ domain, name }, apiKey);
 
     if (!org) {
       setDirectBtnNotFound();
@@ -141,10 +143,10 @@ input.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') openSearchUrl('salesNavSearch');
 });
 
-// Re-run Apollo enrichment if user manually changes the company name
+// Re-run enrichment if user manually overrides the company name (no domain available)
 input.addEventListener('change', () => {
   const company = input.value.trim();
-  if (company) tryEnrich(company);
+  if (company) tryEnrich({ name: company, domain: null });
   else setDirectBtnHidden();
 });
 
@@ -175,7 +177,7 @@ function renderChips(recents) {
     chip.addEventListener('click', () => {
       input.value = company;
       input.focus();
-      tryEnrich(company);
+      tryEnrich({ name: company, domain: null });
     });
     chipsContainer.appendChild(chip);
   });
@@ -211,7 +213,7 @@ saveBtn.addEventListener('click', () => {
     setTimeout(() => { saveMsg.hidden = true; }, 1800);
     // Re-run enrichment with new key if a company is already in the input
     const company = input.value.trim();
-    if (company && key) tryEnrich(company);
+    if (company && key) tryEnrich({ name: company, domain: null });
   });
 });
 
@@ -224,10 +226,12 @@ function detectCompany() {
 
     chrome.tabs.sendMessage(tab.id, { action: 'getCompany' }, (response) => {
       if (chrome.runtime.lastError) return;
-      if (response && response.company) {
-        input.value = response.company;
-        tryEnrich(response.company);
-      }
+      if (!response) return;
+      if (response.company) input.value = response.company;
+      // Enrich using domain if found, otherwise fall back to company name
+      const name = response.company;
+      const domain = response.domain;
+      if (name || domain) tryEnrich({ name, domain });
     });
   });
 }
