@@ -204,9 +204,15 @@ saveBtn.addEventListener('click', () => {
   const key = apiKeyInput.value.replace(/[^\x20-\x7E]/g, '').trim();
   apiKeyInput.value = key;
   chrome.storage.local.set({ [API_KEY_STORAGE]: key }, () => {
-    saveMsg.hidden = false;
-    setTimeout(() => { saveMsg.hidden = true; }, 1800);
     keyIndicator.hidden = !key;
+    saveMsg.hidden = false;
+    setTimeout(() => {
+      saveMsg.hidden = true;
+      settingsView.hidden = true;
+      mainView.hidden = false;
+      input.focus();
+      if (cachedDomain) tryEnrich(cachedDomain);
+    }, 800);
   });
 });
 
